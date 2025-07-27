@@ -1,14 +1,18 @@
 package youtube
 
 import (
-    "fmt"
-    "io"
-    "os"
-    yt "github.com/kkdai/youtube/v2"
-    "downloader/internal/domain"
+	"downloader/internal/domain"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
+	yt "github.com/kkdai/youtube/v2"
 )
 
-type KkdaiDownloader struct{}
+type KkdaiDownloader struct{
+  file os.File
+}
 
 func NewKkdaiDownloader() *KkdaiDownloader {
     return &KkdaiDownloader{}
@@ -29,11 +33,13 @@ func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressB
         return fmt.Errorf("error getting video stream: %w", err)
     }
 
-    fileName := ytVideo.Title + "." + format.MimeType[6:]
+    fileName := ytVideo.Title + "." + strings.Split(format.MimeType, ";")[0][6:]
+
     outFile, err := os.Create(fileName)
     if err != nil {
         return fmt.Errorf("error creating file: %w", err)
     }
+    d.file = *outFile
     defer outFile.Close()
 
     progress.Start(size)
@@ -47,6 +53,17 @@ func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressB
 
     progress.Finish()
     return nil
+}
+
+func (d *KkdaiDownloader) Cancel(video domain.Video) error {
+  if err := d.file.Close(); err != nil {
+  	return fmt.Errorf("error closing file: %w", err)
+  }
+  if err := os.Remove(d.file.Name()); err != nil {
+  	return fmt.Errorf("error deleting file: %w", err)
+  }
+
+  return nil
 }
 
 type progressWriter struct {
