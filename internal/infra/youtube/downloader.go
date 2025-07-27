@@ -10,12 +10,13 @@ import (
 	yt "github.com/kkdai/youtube/v2"
 )
 
-type KkdaiDownloader struct{
-  file os.File
+type KkdaiDownloader struct {
+  file	   os.File
+  notifyer domain.Notifyer
 }
 
-func NewKkdaiDownloader() *KkdaiDownloader {
-    return &KkdaiDownloader{}
+func NewKkdaiDownloader(notifyer domain.Notifyer) *KkdaiDownloader {
+    return &KkdaiDownloader{notifyer: notifyer}
 }
 
 func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressBar) error {
@@ -52,8 +53,25 @@ func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressB
     }
 
     progress.Finish()
+    d.Finalize()
     return nil
 }
+
+func (d *KkdaiDownloader) Finalize() error {
+    msg := d.file.Name() + " was downloaded"
+
+    notification := &domain.Notification {
+        Title:   "Download Finalized",
+        Message: msg,
+    }
+
+    if err := d.notifyer.Notify(*notification); err != nil {
+	return fmt.Errorf("erro to notify user: %w", err)
+    }
+
+    return nil
+}
+
 
 func (d *KkdaiDownloader) Cancel(video domain.Video) error {
   if err := d.file.Close(); err != nil {
