@@ -28,3 +28,6 @@ go.work
 
 # Output of the application
 output
+
+# Video files
+**/*.mp4
