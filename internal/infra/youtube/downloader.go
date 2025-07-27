@@ -22,10 +22,7 @@ func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressB
         return fmt.Errorf("error fetching video info: %w", err)
     }
 
-    format := ytVideo.Formats.WithAudioChannels().FindByItag(22)
-    if format == nil {
-        format = &ytVideo.Formats[0]
-    }
+    format := &ytVideo.Formats[0]
 
     stream, size, err := client.GetStream(ytVideo, format)
     if err != nil {

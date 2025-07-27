@@ -2,7 +2,6 @@ package progress
 
 import (
     "github.com/schollz/progressbar/v3"
-    "downloader/internal/domain"
 )
 
 type TerminalProgressBar struct {

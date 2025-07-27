@@ -4,10 +4,10 @@ import (
     "fmt"
     "os"
 
-    "yt-downloader/internal/domain"
-    "yt-downloader/internal/infra/progress"
-    "yt-downloader/internal/infra/youtube"
-    "yt-downloader/internal/usecase"
+    "downloader/internal/domain"
+    "downloader/internal/infra/progress"
+    "downloader/internal/infra/youtube"
+    "downloader/internal/usecase"
 )
 
 func main() {
