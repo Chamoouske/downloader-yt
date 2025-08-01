@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+    "os/signal"
+    "syscall"
 
 	"downloader/internal/domain"
 	"downloader/internal/infra/progress"
@@ -25,6 +27,14 @@ func main() {
 
     useCase := usecase.DownloadVideoUseCase{Downloader: downloader}
     err := useCase.Execute(video, progressBar)
+    sigChan := make(chan os.Signal, 1)
+    signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+    go func() {
+        <-sigChan
+        useCase.Downloader.Cancel(video)
+    }()
+
     if err != nil {
         fmt.Printf("Error: %v\n", err)
     } else {
