@@ -5,7 +5,6 @@ import (
   "os"
   "os/signal"
   "syscall"
-  "fmt"
 )
 
 type DownloadVideoUseCase struct {
@@ -23,7 +22,6 @@ func (uc *DownloadVideoUseCase) Cancel(video domain.Video) {
 
   go func() {
       <-sigChan
-      fmt.Println("\nDownload cancelado. Removendo arquivo parcial...")
       uc.Downloader.Cancel(video)
     }()
 }
