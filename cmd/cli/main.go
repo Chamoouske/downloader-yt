@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
     "os/signal"
@@ -13,14 +14,17 @@ import (
 	"downloader/internal/usecase"
 )
 
+var url = flag.String("v", "", "Video must not be null")
+
 func main() {
-    if len(os.Args) < 2 {
-        fmt.Println("Usage: downloader <url>")
+    flag.Parse()
+    if *url == "" {
+	    flag.Usage()
+        fmt.Println("Usage: downloader -v <url>")
         os.Exit(1)
     }
 
-    url := os.Args[1]
-    video := domain.Video{URL: url}
+    video := domain.Video{URL: *url}
 
     downloader := youtube.NewKkdaiDownloader(termux.NewTermuxNotifyer())
     progressBar := progress.NewTerminalProgressBar()
