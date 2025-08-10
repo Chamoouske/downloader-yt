@@ -15,14 +15,14 @@ import (
 var url = flag.String("v", "", "Video must not be null")
 
 func main() {
-	flag.Parse()
+    flag.Parse()
     if *url == "" {
 	    flag.Usage()
         fmt.Println("Usage: downloader -v <url>")
         os.Exit(1)
     }
 
-    video := domain.Video{URL: fmt.Sprintf("%s", url)}
+    video := domain.Video{URL: *url}
 
     downloader := youtube.NewKkdaiDownloader(termux.NewTermuxNotifyer())
     progressBar := progress.NewTerminalProgressBar()
