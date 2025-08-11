@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	termux "downloader/internal/infra/notifyer"
 	"downloader/internal/infra/progress"
-	"downloader/internal/infra/termux"
 	"downloader/internal/infra/youtube"
 	"downloader/internal/usecase"
 )
