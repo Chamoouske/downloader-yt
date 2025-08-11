@@ -3,6 +3,7 @@ package youtube
 import (
 	"downloader/internal/domain"
 	"downloader/internal/utils"
+	logger "downloader/pkg/log"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,8 @@ import (
 
 	yt "github.com/kkdai/youtube/v2"
 )
+
+var log = logger.GetLogger("youtube")
 
 type KkdaiDownloader struct {
 	notifyer domain.Notifyer
@@ -45,6 +48,7 @@ func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressB
 	d.configCancelSignal(*outFile)
 	defer outFile.Close()
 
+	log.Info(fmt.Sprintf("Download do vídeo %s iniciado!", ytVideo.Title))
 	progress.Start(size)
 
 	proxyReader := io.TeeReader(stream, &progressWriter{progress: progress})
