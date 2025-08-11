@@ -2,8 +2,8 @@ package webserver
 
 import (
 	"context"
+	"downloader/internal/domain"
 	"downloader/internal/infra/progress"
-	"downloader/internal/infra/youtube"
 	"downloader/internal/usecase"
 	logger "downloader/pkg/log"
 	"encoding/json"
@@ -21,8 +21,7 @@ type WebServer struct {
 	downloadUC usecase.DownloadVideoUseCase
 }
 
-func NewWebServer() *WebServer {
-	downloader := youtube.NewKkdaiDownloader(nil)
+func NewWebServer(downloader domain.Downloader) *WebServer {
 	return &WebServer{downloadUC: usecase.DownloadVideoUseCase{Downloader: downloader}}
 }
 

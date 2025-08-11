@@ -2,6 +2,7 @@ package main
 
 import (
 	webserver "downloader/internal/infra/web_server"
+	"downloader/internal/infra/youtube"
 	logger "downloader/pkg/log"
 	"flag"
 	"os"
@@ -19,7 +20,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	svr := webserver.NewWebServer()
+	svr := webserver.NewWebServer(youtube.NewKkdaiDownloader(nil))
 
 	svr.Start(*port)
 }
