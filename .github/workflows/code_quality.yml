@@ -1,10 +1,10 @@
-name: Go — Quality on changed files
+name: Quality on changed files
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
   quality-changed:
@@ -27,22 +27,17 @@ jobs:
         id: changed-files
         shell: bash
         run: |
-          # Determine base ref (PR base or main for pushes)
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_REF="${{ github.event.pull_request.base.ref }}"
           else
             BASE_REF="main"
           fi
 
-          # Ensure we have the base ref to diff against
           git fetch origin "$BASE_REF" --depth=1 || true
 
-          # Get changed files between base and HEAD
           CHANGED=$(git diff --name-only "origin/$BASE_REF"...HEAD || git diff --name-only "$BASE_REF"...HEAD || true)
-          # Filter only .go files
           CHANGED_GO=$(echo "$CHANGED" | grep '\.go$' || true)
 
-          # Export outputs
           echo "changed_files<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGED_GO" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -77,7 +72,6 @@ jobs:
             fi
           done
 
-          # Trim
           pkgs=$(echo "$pkgs" | xargs)
 
           echo "packages<<EOF" >> $GITHUB_OUTPUT
@@ -96,7 +90,6 @@ jobs:
         if: steps.changed-files.outputs.has_go_files == 'true'
         run: |
           files="${{ steps.changed-files.outputs.changed_files }}"
-          # gofmt -l accepts file list
           unformatted=$(gofmt -l $files || true)
           if [ -n "$unformatted" ]; then
             echo "Found unformatted files:"
@@ -129,7 +122,6 @@ jobs:
             echo "No packages to test."
             exit 0
           fi
-          # run tests with verbose and coverage for those packages
           for p in $pkgs; do
             go test "$p" -v -cover
           done
