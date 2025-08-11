@@ -31,3 +31,7 @@ output
 
 # Video files
 **/*.mp4
+
+# Logs
+logs
+*.log
