@@ -2,8 +2,8 @@ package youtube
 
 import (
 	"downloader/internal/domain"
-	"downloader/internal/utils"
 	logger "downloader/pkg/log"
+	"downloader/pkg/utils"
 	"fmt"
 	"io"
 	"os"
