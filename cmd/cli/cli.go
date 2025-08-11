@@ -16,7 +16,7 @@ func main() {
 	flag.Parse()
 	if *url == "" {
 		flag.Usage()
-		fmt.Println("Usage: downloader -v <url>")
+		fmt.Println("Usage: downloader -v \"<url>\"")
 		os.Exit(1)
 	}
 
