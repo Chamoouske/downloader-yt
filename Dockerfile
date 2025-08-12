@@ -15,5 +15,6 @@ USER appuser
 EXPOSE ${PORT}
 ENV LOG_DIR=/home/appuser/logs
 ENV VIDEO_DIR=/home/appuser/videos
+ENV CONFIG_DIR=/home/appuser/.config
 ENV PORT=${PORT}
 ENTRYPOINT [ "/home/appuser/app" ]

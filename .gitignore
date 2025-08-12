@@ -35,3 +35,8 @@ output
 # Logs
 logs
 *.log
+
+# Enviroments
+.env
+.env*
+!.env.example

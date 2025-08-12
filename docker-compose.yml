@@ -8,3 +8,4 @@ services:
     restart: unless-stopped
     environment:
       - PORT=8080
+      - WEBHOOK=${WEBHOOK}
