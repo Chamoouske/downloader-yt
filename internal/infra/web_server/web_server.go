@@ -57,6 +57,10 @@ func (w *WebServer) Stop() {
 func (ws *WebServer) listItems(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	url := r.URL.Query().Get("url")
+	if url == "" {
+		http.Error(w, "URL parameter is required", http.StatusBadRequest)
+		return
+	}
 
 	go ws.downloadUC.Execute(url, progress.NewTerminalProgressBar())
 	json.NewEncoder(w).Encode(returnHttp{Message: "Download iniciado"})
