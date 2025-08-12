@@ -1,0 +1,10 @@
+services:
+  web:
+    build:
+      context: .
+    container_name: downloader-yt
+    ports:
+      - "3001:8080"
+    restart: unless-stopped
+    environment:
+      - PORT=8080

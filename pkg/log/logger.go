@@ -2,8 +2,10 @@ package logger
 
 import (
 	"context"
+	"downloader/pkg/config"
 	"log/slog"
 	"os"
+	"path/filepath"
 )
 
 type multiHandler struct {
@@ -15,10 +17,16 @@ func GetLogger(name string) *slog.Logger {
 }
 
 func init() {
-	os.MkdirAll("logs", os.ModePerm)
-	logFile, err := os.OpenFile("logs/app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	cfg := config.GetConfig()
+
+	logPath := filepath.Join(cfg.LogDir, "app.log")
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
-		slog.Error("Erro ao abrir arquivo de log:", "error", err)
+		slog.Error("Erro ao abrir arquivo de log", "path", logPath, "error", err)
+
+		consoleHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+		slog.SetDefault(slog.New(consoleHandler))
+		return
 	}
 
 	fileHandler := slog.NewTextHandler(logFile, &slog.HandlerOptions{

@@ -2,12 +2,14 @@ package youtube
 
 import (
 	"downloader/internal/domain"
+	"downloader/pkg/config"
 	logger "downloader/pkg/log"
 	"downloader/pkg/utils"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -26,6 +28,7 @@ func NewKkdaiDownloader(notifyer domain.Notifyer) *KkdaiDownloader {
 
 func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressBar) error {
 	client := yt.Client{}
+	cfg := config.GetConfig()
 
 	ytVideo, err := client.GetVideo(video.URL)
 	if err != nil {
@@ -41,7 +44,7 @@ func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressB
 
 	fileName := utils.SanitizeFilename(ytVideo.Title + "." + strings.Split(format.MimeType, ";")[0][6:])
 
-	outFile, err := os.Create(fileName)
+	outFile, err := os.Create(filepath.Join(cfg.VideoDir, fileName))
 	if err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}
