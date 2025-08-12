@@ -46,9 +46,6 @@ func LoadConfig() error {
 
 func init() {
 	LoadConfig()
-	slog.Info(fmt.Sprintf("logDir: %s", appConfig.LogDir))
-	slog.Info(fmt.Sprintf("VideoDir: %s", appConfig.VideoDir))
-	slog.Info(fmt.Sprintf("ConfigDir: %s", appConfig.ConfigDir))
 	if err := os.MkdirAll(appConfig.LogDir, 0o755); err != nil {
 		slog.Error(fmt.Sprintf("error creating log directory: %s", err))
 	}
