@@ -14,7 +14,7 @@ type Config struct {
 	LogDir     string `json:"log_dir"`
 	VideoDir   string `json:"video_dir"`
 	ConfigDir  string `json:"config_dir"`
-	URLWebhook string `json:"url_webhook"`
+	URLWebhook string
 }
 
 var appConfig Config

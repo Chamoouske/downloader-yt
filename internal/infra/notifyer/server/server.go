@@ -29,6 +29,7 @@ func (s *ServerNotifyer) Notify(notification domain.Notification) error {
 	q.Add("message", notification.Message)
 	req.URL.RawQuery = q.Encode()
 
+	log.Info(fmt.Sprintf("Request from: %s", s.URL))
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Error(fmt.Sprintf("Error sending request: %v", err))

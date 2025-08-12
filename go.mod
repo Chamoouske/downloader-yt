@@ -3,6 +3,7 @@ module downloader
 go 1.24.5
 
 require (
+	github.com/gorilla/mux v1.8.1
 	github.com/kkdai/youtube/v2 v2.10.4
 	github.com/schollz/progressbar/v3 v3.18.0
 	golang.org/x/text v0.28.0
