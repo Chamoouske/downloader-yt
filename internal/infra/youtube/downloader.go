@@ -63,7 +63,7 @@ func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressB
 
 	progress.Finish()
 	if d.notifyer != nil {
-		d.Finalize(fmt.Sprintf("%s was downloaded", ytVideo.Title))
+		d.Finalize(fmt.Sprintf(`O download de "%s" foi finalizado`, ytVideo.Title))
 	}
 	return nil
 }
