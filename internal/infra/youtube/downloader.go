@@ -63,14 +63,12 @@ func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressB
 
 	progress.Finish()
 	if d.notifyer != nil {
-		d.Finalize(*outFile)
+		d.Finalize(fmt.Sprintf("%s was downloaded", ytVideo.Title))
 	}
 	return nil
 }
 
-func (d *KkdaiDownloader) Finalize(file os.File) error {
-	msg := file.Name() + " was downloaded"
-
+func (d *KkdaiDownloader) Finalize(msg string) error {
 	notification := &domain.Notification{
 		Title:   "Download Finalized",
 		Message: msg,
