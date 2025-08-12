@@ -1,6 +1,7 @@
 package main
 
 import (
+	"downloader/internal/infra/notifyer/server"
 	webserver "downloader/internal/infra/web_server"
 	"downloader/internal/infra/youtube"
 	logger "downloader/pkg/log"
@@ -20,7 +21,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	svr := webserver.NewWebServer(youtube.NewKkdaiDownloader(nil))
+	notifyer := server.NewServerNotifyer("http://localhost:8080/notify")
+
+	svr := webserver.NewWebServer(youtube.NewKkdaiDownloader(notifyer))
 
 	svr.Start(*port)
 }
