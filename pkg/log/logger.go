@@ -19,12 +19,12 @@ func GetLogger(name string) *slog.Logger {
 func init() {
 	cfg := config.GetConfig()
 
+	consoleHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+
 	logPath := filepath.Join(cfg.LogDir, "app.log")
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o755)
 	if err != nil {
 		slog.Error("Erro ao abrir arquivo de log", "path", logPath, "error", err)
-
-		consoleHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 		slog.SetDefault(slog.New(consoleHandler))
 		return
 	}
@@ -32,7 +32,6 @@ func init() {
 	fileHandler := slog.NewTextHandler(logFile, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	})
-	consoleHandler := slog.NewTextHandler(os.Stdout, nil)
 
 	combinedHandler := newMultiHandler(fileHandler, consoleHandler)
 
