@@ -10,14 +10,31 @@ import (
 )
 
 type Config struct {
-	Port       string `json:"port"`
-	LogDir     string `json:"log_dir"`
-	VideoDir   string `json:"video_dir"`
-	ConfigDir  string `json:"config_dir"`
-	URLWebhook string
+	Port       string         `json:"port"`
+	LogDir     string         `json:"log_dir"`
+	VideoDir   string         `json:"video_dir"`
+	ConfigDir  string         `json:"config_dir"`
+	URLWebhook string         `json:"url_webhook"`
+	Database   ConfigDatabase `json:"db"`
+}
+
+type ConfigDatabase struct {
+	Port string `json:"port"`
+	URL  string `json:"url"`
+	User string `json:"usr"`
+	Psw  string `json:"psw"`
 }
 
 var appConfig Config
+var dbConfig ConfigDatabase
+
+func GetConfig() Config {
+	return appConfig
+}
+
+func GetDbConfig() ConfigDatabase {
+	return dbConfig
+}
 
 func LoadConfig() error {
 	readConfig()
@@ -38,9 +55,8 @@ func LoadConfig() error {
 	}
 
 	if appConfig.URLWebhook == "" {
-		appConfig.URLWebhook = utils.GetEnvOrDefault("WEBHOOK", "http://host.docker.internal:5678/webhook-test/downloader-yt")
+		appConfig.URLWebhook = utils.GetEnvOrDefault("WEBHOOK", "http://host.docker.internal:5677/webhook/downloader-yt")
 	}
-
 	return nil
 }
 
@@ -58,10 +74,6 @@ func init() {
 		slog.Error(fmt.Sprintf("error creating config directory: %s", err))
 	}
 	saveConfig()
-}
-
-func GetConfig() Config {
-	return appConfig
 }
 
 func readConfig() error {

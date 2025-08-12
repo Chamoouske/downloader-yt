@@ -1,8 +1,10 @@
 package server
 
 import (
+	"bytes"
 	"downloader/internal/domain"
 	logger "downloader/pkg/log"
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
@@ -13,21 +15,36 @@ type ServerNotifyer struct {
 	URL string
 }
 
+type VideoResponse struct {
+	URL string `json:"url"`
+	To  string `json:"to"`
+}
+
 func NewServerNotifyer(url string) *ServerNotifyer {
 	return &ServerNotifyer{URL: url}
 }
 
 func (s *ServerNotifyer) Notify(notification domain.Notification) error {
-	log.Info(fmt.Sprintf("Sending notification: %s", notification.Message))
+	log.Info(fmt.Sprintf("Sending notification: %s", notification.Title))
 	httpClient := &http.Client{}
-	req, err := http.NewRequest("GET", s.URL, nil)
+
+	obj, err := json.Marshal(VideoResponse{
+		URL: fmt.Sprintf("https://downloader.ajaxlima.dev.br/video/%s", notification.Message),
+		To:  notification.To,
+	})
 	if err != nil {
-		log.Error(fmt.Sprintf("Error creating request: %v", err))
+		msgError := fmt.Sprintf("Error creating json obj: %v", err)
+		log.Error(msgError)
+		return fmt.Errorf("%s", msgError)
+	}
+
+	req, err := http.NewRequest("GET", s.URL, bytes.NewBuffer(obj))
+	if err != nil {
+		msgError := fmt.Sprintf("Error creating request: %v", err)
+		log.Error(msgError)
+		return fmt.Errorf("%s", msgError)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	q := req.URL.Query()
-	q.Add("message", notification.Message)
-	req.URL.RawQuery = q.Encode()
 
 	log.Info(fmt.Sprintf("Request from: %s", s.URL))
 	resp, err := httpClient.Do(req)

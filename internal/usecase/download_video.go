@@ -8,6 +8,11 @@ type DownloadVideoUseCase struct {
 	Downloader domain.Downloader
 }
 
-func (uc *DownloadVideoUseCase) Execute(url string, progress domain.ProgressBar) error {
-	return uc.Downloader.Download(domain.Video{URL: url}, progress)
+type Solicitation struct {
+	URL       string
+	Requester string
+}
+
+func (uc *DownloadVideoUseCase) Execute(sol Solicitation, progress domain.ProgressBar) error {
+	return uc.Downloader.Download(domain.Video{URL: sol.URL, Requester: sol.Requester}, progress)
 }

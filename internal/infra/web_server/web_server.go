@@ -35,8 +35,8 @@ func NewWebServer(downloader domain.Downloader) *WebServer {
 
 func (w *WebServer) Start(port int) {
 	mux := mux.NewRouter()
-	mux.HandleFunc("/download", w.listItems).Methods("GET")
-	mux.HandleFunc("/download/{id}", w.download).Methods("GET")
+	mux.HandleFunc("/video/download", w.addVideoNaFilaDeDownload).Methods("GET")
+	mux.HandleFunc("/video/{id}", w.download).Methods("GET")
 
 	w.server = &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
@@ -63,15 +63,20 @@ func (w *WebServer) Stop() {
 	log.Info("server stopped")
 }
 
-func (ws *WebServer) listItems(w http.ResponseWriter, r *http.Request) {
+func (ws *WebServer) addVideoNaFilaDeDownload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	url := r.URL.Query().Get("url")
 	if url == "" {
 		http.Error(w, "URL parameter is required", http.StatusBadRequest)
 		return
 	}
+	requester := r.URL.Query().Get("requester")
+	if requester == "" {
+		http.Error(w, "requester parameter is required", http.StatusBadRequest)
+		return
+	}
 
-	go ws.downloadUC.Execute(url, progress.NewTerminalProgressBar())
+	go ws.downloadUC.Execute(usecase.Solicitation{URL: url, Requester: requester}, progress.NewTerminalProgressBar())
 	json.NewEncoder(w).Encode(returnHttp{Message: "Download iniciado"})
 }
 
@@ -111,6 +116,13 @@ func (ws *WebServer) download(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "video/mp4")
 	w.Header().Set("Cache-Control", "private, max-age=86400")
 
+	log.Info(fmt.Sprintf("Download de %s iniciado", filename))
 	http.ServeContent(w, r, filename, stat.ModTime().UTC(), f)
-	os.Remove(cleanPath)
+	tic := time.Tick(30 * time.Minute)
+
+	<-tic
+	err = os.Remove(cleanPath)
+	if err != nil {
+		log.Error(fmt.Sprintf("Nao foi possivel excluir o arquivo: %s", err))
+	}
 }

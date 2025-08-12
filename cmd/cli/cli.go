@@ -20,11 +20,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	downloader := youtube.NewKkdaiDownloader(nil)
+	downloader := youtube.NewKkdaiDownloader(nil, nil)
 	progressBar := progress.NewTerminalProgressBar()
 
 	useCase := usecase.DownloadVideoUseCase{Downloader: downloader}
-	err := useCase.Execute(*url, progressBar)
+	err := useCase.Execute(usecase.Solicitation{URL: *url}, progressBar)
 
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
