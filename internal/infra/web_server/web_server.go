@@ -5,13 +5,17 @@ import (
 	"downloader/internal/domain"
 	"downloader/internal/infra/progress"
 	"downloader/internal/usecase"
+	"downloader/pkg/config"
 	logger "downloader/pkg/log"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 var log = logger.GetLogger("web_server")
@@ -21,13 +25,18 @@ type WebServer struct {
 	downloadUC usecase.DownloadVideoUseCase
 }
 
+type returnHttp struct {
+	Message string `json:"message"`
+}
+
 func NewWebServer(downloader domain.Downloader) *WebServer {
 	return &WebServer{downloadUC: usecase.DownloadVideoUseCase{Downloader: downloader}}
 }
 
 func (w *WebServer) Start(port int) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/download", w.listItems)
+	mux := mux.NewRouter()
+	mux.HandleFunc("/download", w.listItems).Methods("GET")
+	mux.HandleFunc("/download/{id}", w.download).Methods("GET")
 
 	w.server = &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
@@ -66,6 +75,42 @@ func (ws *WebServer) listItems(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(returnHttp{Message: "Download iniciado"})
 }
 
-type returnHttp struct {
-	Message string `json:"message"`
+func (ws *WebServer) download(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+	videoRoot := config.GetConfig().VideoDir
+
+	filename := id + ".mp4"
+	fullPath := filepath.Join(videoRoot, filename)
+
+	cleanRoot, _ := filepath.Abs(videoRoot)
+	cleanPath, err := filepath.Abs(fullPath)
+	if err != nil || len(cleanPath) < len(cleanRoot) || cleanPath[:len(cleanRoot)] != cleanRoot {
+		http.Error(w, "invalid path", http.StatusForbidden)
+		return
+	}
+
+	f, err := os.Open(cleanPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	defer f.Close()
+
+	stat, err := f.Stat()
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.Header().Set("Content-Type", "video/mp4")
+	w.Header().Set("Cache-Control", "private, max-age=86400")
+
+	http.ServeContent(w, r, filename, stat.ModTime().UTC(), f)
+	os.Remove(cleanPath)
 }
