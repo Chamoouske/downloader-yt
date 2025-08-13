@@ -124,12 +124,4 @@ func (ws *WebServer) download(w http.ResponseWriter, r *http.Request) {
 
 	log.Info(fmt.Sprintf("Download de %s iniciado", video.Filename))
 	http.ServeContent(w, r, fmt.Sprintf(`"%s.mp4"`, video.Filename), stat.ModTime().UTC(), f)
-	tic := time.Tick(30 * time.Minute)
-
-	<-tic
-	ws.db.Remove(id)
-	err = os.Remove(cleanPath)
-	if err != nil {
-		log.Error(fmt.Sprintf("Nao foi possivel excluir o arquivo: %s", err))
-	}
 }
