@@ -23,14 +23,15 @@ var log = logger.GetLogger("web_server")
 type WebServer struct {
 	server     *http.Server
 	downloadUC usecase.DownloadVideoUseCase
+	db         domain.Database[domain.Video]
 }
 
 type returnHttp struct {
 	Message string `json:"message"`
 }
 
-func NewWebServer(downloader domain.Downloader) *WebServer {
-	return &WebServer{downloadUC: usecase.DownloadVideoUseCase{Downloader: downloader}}
+func NewWebServer(downloader domain.Downloader, db domain.Database[domain.Video]) *WebServer {
+	return &WebServer{downloadUC: usecase.DownloadVideoUseCase{Downloader: downloader}, db: db}
 }
 
 func (w *WebServer) Start(port int) {
@@ -83,6 +84,11 @@ func (ws *WebServer) addVideoNaFilaDeDownload(w http.ResponseWriter, r *http.Req
 func (ws *WebServer) download(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
+	video, err := ws.db.Get(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
 	videoRoot := config.GetConfig().VideoDir
 
 	filename := id + ".mp4"
@@ -112,15 +118,16 @@ func (ws *WebServer) download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.mp4"`, video.Filename))
 	w.Header().Set("Content-Type", "video/mp4")
 	w.Header().Set("Cache-Control", "private, max-age=86400")
 
-	log.Info(fmt.Sprintf("Download de %s iniciado", filename))
-	http.ServeContent(w, r, filename, stat.ModTime().UTC(), f)
+	log.Info(fmt.Sprintf("Download de %s iniciado", video.Filename))
+	http.ServeContent(w, r, fmt.Sprintf(`"%s.mp4"`, video.Filename), stat.ModTime().UTC(), f)
 	tic := time.Tick(30 * time.Minute)
 
 	<-tic
+	ws.db.Remove(id)
 	err = os.Remove(cleanPath)
 	if err != nil {
 		log.Error(fmt.Sprintf("Nao foi possivel excluir o arquivo: %s", err))

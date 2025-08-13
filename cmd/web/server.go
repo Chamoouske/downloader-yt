@@ -1,8 +1,7 @@
 package main
 
 import (
-	"downloader/internal/domain"
-	memoria "downloader/internal/infra/db/mem_db"
+	dependencyinjections "downloader/internal/infra/dependency_injections"
 	"downloader/internal/infra/notifyer/server"
 	webserver "downloader/internal/infra/web_server"
 	"downloader/internal/infra/youtube"
@@ -27,8 +26,9 @@ func main() {
 	}
 
 	notifyer := server.NewServerNotifyer(cfg.URLWebhook)
+	db := *dependencyinjections.GetVideoDatabase()
 
-	svr := webserver.NewWebServer(youtube.NewKkdaiDownloader(notifyer, memoria.NewMemoriaDatabase[domain.Video]()))
+	svr := webserver.NewWebServer(youtube.NewKkdaiDownloader(notifyer, db), db)
 
 	svr.Start(getPort())
 }
