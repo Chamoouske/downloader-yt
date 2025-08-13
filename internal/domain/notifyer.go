@@ -1,5 +1,5 @@
 package domain
 
 type Notifyer interface {
-  Notify(notification Notification) error
+	Notify(notification Notification) error
 }

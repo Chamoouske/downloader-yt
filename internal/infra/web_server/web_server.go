@@ -6,10 +6,10 @@ import (
 	"downloader/internal/infra/progress"
 	"downloader/internal/usecase"
 	"downloader/pkg/config"
-	logger "downloader/pkg/log"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -20,20 +20,20 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var log = logger.GetLogger("web_server")
-
 type WebServer struct {
 	server     *http.Server
 	downloadUC usecase.DownloadVideoUseCase
 	db         domain.Database[domain.Video]
+	cfg        *config.Config
+	log        *slog.Logger
 }
 
 type returnHttp struct {
 	Message string `json:"message"`
 }
 
-func NewWebServer(downloader domain.Downloader, db domain.Database[domain.Video]) *WebServer {
-	return &WebServer{downloadUC: usecase.DownloadVideoUseCase{Downloader: downloader}, db: db}
+func NewWebServer(downloader domain.Downloader, db domain.Database[domain.Video], cfg *config.Config, appLogger *slog.Logger) *WebServer {
+	return &WebServer{downloadUC: usecase.DownloadVideoUseCase{Downloader: downloader}, db: db, cfg: cfg, log: appLogger}
 }
 
 func (w *WebServer) Start(port int) {
@@ -47,9 +47,9 @@ func (w *WebServer) Start(port int) {
 	}
 
 	go func() {
-		log.Info(fmt.Sprintf("server listen on port %d", port))
+		w.log.Info(fmt.Sprintf("server listen on port %d", port))
 		if err := w.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error(fmt.Sprintf("listen: %v", err))
+			w.log.Error(fmt.Sprintf("listen: %v", err))
 		}
 	}()
 
@@ -63,7 +63,7 @@ func (w *WebServer) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_ = w.server.Shutdown(ctx)
-	log.Info("server stopped")
+	w.log.Info("server stopped")
 }
 
 func (ws *WebServer) addVideoNaFilaDeDownload(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +79,10 @@ func (ws *WebServer) addVideoNaFilaDeDownload(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	go ws.downloadUC.Execute(usecase.Solicitation{URL: url, Requester: requester}, progress.NewTerminalProgressBar())
+	progressBarClient := &progress.DefaultProgressBarClient{}
+	progressBar := progress.NewTerminalProgressBar(progressBarClient)
+
+	go ws.downloadUC.Execute(usecase.Solicitation{URL: url, Requester: requester}, progressBar)
 	json.NewEncoder(w).Encode(returnHttp{Message: "Download iniciado"})
 }
 
@@ -91,7 +94,7 @@ func (ws *WebServer) download(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	videoRoot := config.GetConfig().VideoDir
+	videoRoot := ws.cfg.VideoDir
 
 	filename := id + ".mp4"
 	fullPath := filepath.Join(videoRoot, filename)
@@ -124,14 +127,14 @@ func (ws *WebServer) download(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "video/mp4")
 	w.Header().Set("Cache-Control", "private, max-age=86400")
 
-	log.Info(fmt.Sprintf("Download de %s iniciado", video.Filename))
+	ws.log.Info(fmt.Sprintf("Download de %s iniciado", video.Filename))
 
 	cleanupFn := func() {
 		f.Close()
 		if err := os.Remove(cleanPath); err != nil {
-			log.Error(fmt.Sprintf("Erro ao remover arquivo: %s", err))
+			ws.log.Error(fmt.Sprintf("Erro ao remover arquivo: %s", err))
 		} else {
-			log.Info(fmt.Sprintf("Arquivo %s removido após download", cleanPath))
+			ws.log.Info(fmt.Sprintf("Arquivo %s removido após download", cleanPath))
 		}
 	}
 

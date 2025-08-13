@@ -38,7 +38,7 @@ func SanitizeFilename(name string) string {
 	s = strings.TrimSpace(s)
 	s = strings.ReplaceAll(s, " ", "_")
 
-	reInvalid := regexp.MustCompile(`[^\p{L}\p{N}\._-]+`)
+	reInvalid := regexp.MustCompile(`[^\p{L}\p{N}\._ -]+`)
 	s = reInvalid.ReplaceAllString(s, "_")
 
 	reMulti := regexp.MustCompile(`[_\-.]{2,}`)

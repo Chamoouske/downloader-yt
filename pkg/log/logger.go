@@ -12,21 +12,14 @@ type multiHandler struct {
 	handlers []slog.Handler
 }
 
-func GetLogger(name string) *slog.Logger {
-	return slog.Default().With("component", name)
-}
-
-func init() {
-	cfg := config.GetConfig()
-
+func NewLogger(cfg *config.Config) *slog.Logger {
 	consoleHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 
 	logPath := filepath.Join(cfg.LogDir, "app.log")
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o755)
 	if err != nil {
 		slog.Error("Erro ao abrir arquivo de log", "path", logPath, "error", err)
-		slog.SetDefault(slog.New(consoleHandler))
-		return
+		return slog.New(consoleHandler)
 	}
 
 	fileHandler := slog.NewTextHandler(logFile, &slog.HandlerOptions{
@@ -35,7 +28,7 @@ func init() {
 
 	combinedHandler := newMultiHandler(fileHandler, consoleHandler)
 
-	slog.SetDefault(slog.New(combinedHandler))
+	return slog.New(combinedHandler)
 }
 
 func newMultiHandler(handlers ...slog.Handler) *multiHandler {

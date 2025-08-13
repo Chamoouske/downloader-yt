@@ -7,6 +7,7 @@ import (
 	"downloader/pkg/utils"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -17,29 +18,47 @@ import (
 	yt "github.com/kkdai/youtube/v2"
 )
 
-var log = logger.GetLogger("youtube")
+var log *slog.Logger
 
+func init() {
+	cfg, _ := config.NewConfig()
+	log = logger.NewLogger(cfg).With("component", "youtube")
+}
+
+// YoutubeClient interface to abstract youtube client operations
+type YoutubeClient interface {
+	GetVideo(videoID string) (*yt.Video, error)
+	GetStream(video *yt.Video, format *yt.Format) (io.ReadCloser, int64, error)
+}
+
+// OsFs interface to abstract os file system operations
+type OsFs interface {
+	OpenFile(name string, flag int, perm os.FileMode) (*os.File, error)
+	Remove(name string) error
+}
+
+// KkdaiDownloader struct with injected dependencies
 type KkdaiDownloader struct {
 	notifyer domain.Notifyer
 	db       domain.Database[domain.Video]
+	ytClient YoutubeClient
+	fs       OsFs
+	cfg      *config.Config
 }
 
-func NewKkdaiDownloader(notifyer domain.Notifyer, db domain.Database[domain.Video]) *KkdaiDownloader {
-	return &KkdaiDownloader{notifyer: notifyer, db: db}
+func NewKkdaiDownloader(notifyer domain.Notifyer, db domain.Database[domain.Video], ytClient YoutubeClient, fs OsFs, cfg *config.Config) *KkdaiDownloader {
+	return &KkdaiDownloader{notifyer: notifyer, db: db, ytClient: ytClient, fs: fs, cfg: cfg}
 }
 
 func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressBar) error {
-	client := yt.Client{}
-	cfg := config.GetConfig()
-
-	ytVideo, err := client.GetVideo(video.URL)
+	ytVideo, err := d.ytClient.GetVideo(video.URL)
 	if err != nil {
 		return fmt.Errorf("error fetching video info: %w", err)
 	}
 
 	format := &ytVideo.Formats[0]
 
-	stream, size, err := client.GetStream(ytVideo, format)
+	stream, size, err := d.ytClient.GetStream(ytVideo, format)
 	if err != nil {
 		return fmt.Errorf("error getting video stream: %w", err)
 	}
@@ -47,7 +66,7 @@ func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressB
 	id := uuid.NewString()
 	fileName := utils.SanitizeFilename(id + "." + strings.Split(format.MimeType, ";")[0][6:])
 
-	outFile, err := os.OpenFile(filepath.Join(cfg.VideoDir, fileName), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o777)
+	outFile, err := d.fs.OpenFile(filepath.Join(d.cfg.VideoDir, fileName), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o777)
 	if err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}
@@ -91,7 +110,7 @@ func (d *KkdaiDownloader) Cancel(file os.File) error {
 	if err := file.Close(); err != nil {
 		return fmt.Errorf("error closing file: %w", err)
 	}
-	if err := os.Remove(file.Name()); err != nil {
+	if err := d.fs.Remove(file.Name()); err != nil {
 		return fmt.Errorf("error deleting file: %w", err)
 	}
 
@@ -106,6 +125,30 @@ func (d *KkdaiDownloader) configCancelSignal(file os.File) {
 		<-sigChan
 		d.Cancel(file)
 	}()
+}
+
+// DefaultYoutubeClient implements YoutubeClient using kkdai/youtube/v2
+type DefaultYoutubeClient struct{}
+
+func (c *DefaultYoutubeClient) GetVideo(videoID string) (*yt.Video, error) {
+	client := yt.Client{}
+	return client.GetVideo(videoID)
+}
+
+func (c *DefaultYoutubeClient) GetStream(video *yt.Video, format *yt.Format) (io.ReadCloser, int64, error) {
+	client := yt.Client{}
+	return client.GetStream(video, format)
+}
+
+// DefaultOsFs implements OsFs using os package
+type DefaultOsFs struct{}
+
+func (fs *DefaultOsFs) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
+	return os.OpenFile(name, flag, perm)
+}
+
+func (fs *DefaultOsFs) Remove(name string) error {
+	return os.Remove(name)
 }
 
 type progressWriter struct {

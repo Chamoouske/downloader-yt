@@ -4,7 +4,6 @@ import (
 	"downloader/pkg/utils"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 )
@@ -25,72 +24,90 @@ type ConfigDatabase struct {
 	Psw  string `json:"psw"`
 }
 
-var appConfig Config
-var dbConfig ConfigDatabase
+func NewConfig() (*Config, error) {
+	cfg := &Config{}
+	cfg.ConfigDir = utils.GetEnvOrDefault("CONFIG_DIR", "./.config")
 
-func GetConfig() Config {
-	return appConfig
+	if err := cfg.readConfig(); err != nil {
+		return nil, err
+	}
+	cfg.setDefaults()
+
+	if err := cfg.createDirs(); err != nil {
+		return nil, err
+	}
+	return cfg, cfg.saveConfig()
 }
 
-func GetDbConfig() ConfigDatabase {
-	return dbConfig
+func (c *Config) GetPort() string {
+	return c.Port
 }
 
-func LoadConfig() error {
-	readConfig()
-	if appConfig.ConfigDir == "" {
-		appConfig.ConfigDir = utils.GetEnvOrDefault("CONFIG_DIR", "./.config")
-	}
-
-	if appConfig.Port == "" {
-		appConfig.Port = utils.GetEnvOrDefault("PORT", "8080")
-	}
-
-	if appConfig.LogDir == "" {
-		appConfig.LogDir = utils.GetEnvOrDefault("LOG_DIR", "./.logs")
-	}
-
-	if appConfig.VideoDir == "" {
-		appConfig.VideoDir = utils.GetEnvOrDefault("VIDEO_DIR", "./videos")
-	}
-
-	if appConfig.URLWebhook == "" {
-		appConfig.URLWebhook = utils.GetEnvOrDefault("WEBHOOK", "http://host.docker.internal:5677/webhook/downloader-yt")
-	}
-	return nil
+func (c *Config) GetLogDir() string {
+	return c.LogDir
 }
 
-func init() {
-	LoadConfig()
-	if err := os.MkdirAll(appConfig.LogDir, 0o755); err != nil {
-		slog.Error(fmt.Sprintf("error creating log directory: %s", err))
-	}
-
-	if err := os.MkdirAll(appConfig.VideoDir, 0o755); err != nil {
-		slog.Error(fmt.Sprintf("error creating video directory: %s", err))
-	}
-
-	if err := os.MkdirAll(appConfig.ConfigDir, 0o755); err != nil {
-		slog.Error(fmt.Sprintf("error creating config directory: %s", err))
-	}
-	saveConfig()
+func (c *Config) GetVideoDir() string {
+	return c.VideoDir
 }
 
-func readConfig() error {
-	file, err := os.ReadFile(filepath.Join(utils.GetEnvOrDefault("CONFIG_DIR", "./.config"), "config.json"))
+func (c *Config) GetConfigDir() string {
+	return c.ConfigDir
+}
+
+func (c *Config) GetURLWebhook() string {
+	return c.URLWebhook
+}
+
+func (c *Config) GetDbConfig() ConfigDatabase {
+	return c.Database
+}
+
+func (c *Config) setDefaults() {
+	if c.Port == "" {
+		c.Port = utils.GetEnvOrDefault("PORT", "8080")
+	}
+	if c.LogDir == "" {
+		c.LogDir = utils.GetEnvOrDefault("LOG_DIR", "./.logs")
+	}
+	if c.VideoDir == "" {
+		c.VideoDir = utils.GetEnvOrDefault("VIDEO_DIR", "./videos")
+	}
+	if c.URLWebhook == "" {
+		c.URLWebhook = utils.GetEnvOrDefault("WEBHOOK", "http://host.docker.internal:5677/webhook/downloader-yt")
+	}
+}
+
+func (c *Config) readConfig() error {
+	file, err := os.ReadFile(filepath.Join(c.ConfigDir, "config.json"))
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
 		return fmt.Errorf("failed to read config: %w", err)
 	}
-	err = json.Unmarshal(file, &appConfig)
+	err = json.Unmarshal(file, c)
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
-
 	return nil
 }
 
-func saveConfig() error {
-	file, err := os.Create(filepath.Join(appConfig.ConfigDir, "config.json"))
+func (c *Config) createDirs() error {
+	if err := os.MkdirAll(c.LogDir, 0o755); err != nil {
+		return fmt.Errorf("error creating log directory: %w", err)
+	}
+	if err := os.MkdirAll(c.VideoDir, 0o755); err != nil {
+		return fmt.Errorf("error creating video directory: %w", err)
+	}
+	if err := os.MkdirAll(c.ConfigDir, 0o755); err != nil {
+		return fmt.Errorf("error creating config directory: %w", err)
+	}
+	return nil
+}
+
+func (c *Config) saveConfig() error {
+	file, err := os.Create(filepath.Join(c.ConfigDir, "config.json"))
 	if err != nil {
 		return fmt.Errorf("failed to create config file: %w", err)
 	}
@@ -98,7 +115,7 @@ func saveConfig() error {
 
 	encoder := json.NewEncoder(file)
 
-	if err := encoder.Encode(appConfig); err != nil {
+	if err := encoder.Encode(c); err != nil {
 		return fmt.Errorf("failed to encode config to JSON: %w", err)
 	}
 

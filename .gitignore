@@ -43,3 +43,6 @@ logs
 
 # Dev Config
 .config
+
+# Artifacts
+bin

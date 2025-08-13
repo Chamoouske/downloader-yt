@@ -12,3 +12,6 @@
 # Git and github
 .git
 .github
+
+# Artifacs
+bin
