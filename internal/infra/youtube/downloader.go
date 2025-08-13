@@ -65,6 +65,7 @@ func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressB
 	}
 
 	progress.Finish()
+	video.Filename = utils.SanitizeFilename(ytVideo.Title)
 	if d.db != nil {
 		d.db.Save(id, video)
 	}
