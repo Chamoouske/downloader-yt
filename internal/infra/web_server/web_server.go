@@ -9,10 +9,12 @@ import (
 	logger "downloader/pkg/log"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -123,5 +125,47 @@ func (ws *WebServer) download(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, max-age=86400")
 
 	log.Info(fmt.Sprintf("Download de %s iniciado", video.Filename))
-	http.ServeContent(w, r, fmt.Sprintf(`"%s.mp4"`, video.Filename), stat.ModTime().UTC(), f)
+
+	cleanupFn := func() {
+		f.Close()
+		if err := os.Remove(cleanPath); err != nil {
+			log.Error(fmt.Sprintf("Erro ao remover arquivo: %s", err))
+		} else {
+			log.Info(fmt.Sprintf("Arquivo %s removido após download", cleanPath))
+		}
+	}
+
+	seeker := &cleanupReadSeeker{
+		file:    f,
+		reader:  f,
+		seeker:  f,
+		cleanup: cleanupFn,
+	}
+	defer seeker.triggerCleanup()
+
+	http.ServeContent(w, r, filename, stat.ModTime().UTC(), seeker)
+}
+
+type cleanupReadSeeker struct {
+	file    *os.File
+	reader  io.Reader
+	seeker  io.Seeker
+	cleanup func()
+	once    sync.Once
+}
+
+func (r *cleanupReadSeeker) Read(p []byte) (int, error) {
+	n, err := r.reader.Read(p)
+	if err != nil {
+		r.triggerCleanup()
+	}
+	return n, err
+}
+
+func (r *cleanupReadSeeker) Seek(offset int64, whence int) (int64, error) {
+	return r.seeker.Seek(offset, whence)
+}
+
+func (r *cleanupReadSeeker) triggerCleanup() {
+	r.once.Do(r.cleanup)
 }
