@@ -13,6 +13,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/google/uuid"
 	yt "github.com/kkdai/youtube/v2"
 )
 
@@ -20,10 +21,11 @@ var log = logger.GetLogger("youtube")
 
 type KkdaiDownloader struct {
 	notifyer domain.Notifyer
+	db       domain.Database[domain.Video]
 }
 
-func NewKkdaiDownloader(notifyer domain.Notifyer) *KkdaiDownloader {
-	return &KkdaiDownloader{notifyer: notifyer}
+func NewKkdaiDownloader(notifyer domain.Notifyer, db domain.Database[domain.Video]) *KkdaiDownloader {
+	return &KkdaiDownloader{notifyer: notifyer, db: db}
 }
 
 func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressBar) error {
@@ -42,9 +44,10 @@ func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressB
 		return fmt.Errorf("error getting video stream: %w", err)
 	}
 
-	fileName := utils.SanitizeFilename(ytVideo.Title + "." + strings.Split(format.MimeType, ";")[0][6:])
+	id := uuid.NewString()
+	fileName := utils.SanitizeFilename(id + "." + strings.Split(format.MimeType, ";")[0][6:])
 
-	outFile, err := os.Create(filepath.Join(cfg.VideoDir, fileName))
+	outFile, err := os.OpenFile(filepath.Join(cfg.VideoDir, fileName), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o777)
 	if err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}
@@ -62,21 +65,22 @@ func (d *KkdaiDownloader) Download(video domain.Video, progress domain.ProgressB
 	}
 
 	progress.Finish()
+	video.Filename = utils.SanitizeFilename(ytVideo.Title)
+	if d.db != nil {
+		d.db.Save(id, video)
+	}
 	if d.notifyer != nil {
-		d.Finalize(*outFile)
+		d.Finalize(domain.Notification{
+			Title:   ytVideo.Title,
+			Message: id,
+			To:      video.Requester,
+		})
 	}
 	return nil
 }
 
-func (d *KkdaiDownloader) Finalize(file os.File) error {
-	msg := file.Name() + " was downloaded"
-
-	notification := &domain.Notification{
-		Title:   "Download Finalized",
-		Message: msg,
-	}
-
-	if err := d.notifyer.Notify(*notification); err != nil {
+func (d *KkdaiDownloader) Finalize(notification domain.Notification) error {
+	if err := d.notifyer.Notify(notification); err != nil {
 		return fmt.Errorf("erro to notify user: %w", err)
 	}
 

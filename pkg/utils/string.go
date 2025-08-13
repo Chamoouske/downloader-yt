@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -70,4 +71,12 @@ func SanitizeFilename(name string) string {
 	}
 
 	return s + ext
+}
+
+func GetEnvOrDefault(key string, defaultValue string) string {
+	val := os.Getenv(key)
+	if val == "" {
+		return defaultValue
+	}
+	return val
 }

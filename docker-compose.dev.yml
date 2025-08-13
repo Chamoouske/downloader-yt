@@ -9,6 +9,6 @@ services:
       - "3001:8080"
     environment:
       - PORT=8080
-    command: go mod download
+      - WEBHOOK=${WEBHOOK}
     entrypoint: [ "go", "run", "./cmd/web/server.go" ]
     restart: unless-stopped

@@ -5,13 +5,19 @@ import (
 	"downloader/internal/domain"
 	"downloader/internal/infra/progress"
 	"downloader/internal/usecase"
+	"downloader/pkg/config"
 	logger "downloader/pkg/log"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"sync"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 var log = logger.GetLogger("web_server")
@@ -19,15 +25,21 @@ var log = logger.GetLogger("web_server")
 type WebServer struct {
 	server     *http.Server
 	downloadUC usecase.DownloadVideoUseCase
+	db         domain.Database[domain.Video]
 }
 
-func NewWebServer(downloader domain.Downloader) *WebServer {
-	return &WebServer{downloadUC: usecase.DownloadVideoUseCase{Downloader: downloader}}
+type returnHttp struct {
+	Message string `json:"message"`
+}
+
+func NewWebServer(downloader domain.Downloader, db domain.Database[domain.Video]) *WebServer {
+	return &WebServer{downloadUC: usecase.DownloadVideoUseCase{Downloader: downloader}, db: db}
 }
 
 func (w *WebServer) Start(port int) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/download", w.listItems)
+	mux := mux.NewRouter()
+	mux.HandleFunc("/video/download", w.addVideoNaFilaDeDownload).Methods("GET")
+	mux.HandleFunc("/video/{id}", w.download).Methods("GET")
 
 	w.server = &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
@@ -54,14 +66,106 @@ func (w *WebServer) Stop() {
 	log.Info("server stopped")
 }
 
-func (ws *WebServer) listItems(w http.ResponseWriter, r *http.Request) {
+func (ws *WebServer) addVideoNaFilaDeDownload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	url := r.URL.Query().Get("url")
+	if url == "" {
+		http.Error(w, "URL parameter is required", http.StatusBadRequest)
+		return
+	}
+	requester := r.URL.Query().Get("requester")
+	if requester == "" {
+		http.Error(w, "requester parameter is required", http.StatusBadRequest)
+		return
+	}
 
-	go ws.downloadUC.Execute(url, progress.NewTerminalProgressBar())
+	go ws.downloadUC.Execute(usecase.Solicitation{URL: url, Requester: requester}, progress.NewTerminalProgressBar())
 	json.NewEncoder(w).Encode(returnHttp{Message: "Download iniciado"})
 }
 
-type returnHttp struct {
-	Message string `json:"message"`
+func (ws *WebServer) download(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+	video, err := ws.db.Get(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	videoRoot := config.GetConfig().VideoDir
+
+	filename := id + ".mp4"
+	fullPath := filepath.Join(videoRoot, filename)
+
+	cleanRoot, _ := filepath.Abs(videoRoot)
+	cleanPath, err := filepath.Abs(fullPath)
+	if err != nil || len(cleanPath) < len(cleanRoot) || cleanPath[:len(cleanRoot)] != cleanRoot {
+		http.Error(w, "invalid path", http.StatusForbidden)
+		return
+	}
+
+	f, err := os.Open(cleanPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	defer f.Close()
+
+	stat, err := f.Stat()
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.mp4"`, video.Filename))
+	w.Header().Set("Content-Type", "video/mp4")
+	w.Header().Set("Cache-Control", "private, max-age=86400")
+
+	log.Info(fmt.Sprintf("Download de %s iniciado", video.Filename))
+
+	cleanupFn := func() {
+		f.Close()
+		if err := os.Remove(cleanPath); err != nil {
+			log.Error(fmt.Sprintf("Erro ao remover arquivo: %s", err))
+		} else {
+			log.Info(fmt.Sprintf("Arquivo %s removido após download", cleanPath))
+		}
+	}
+
+	seeker := &cleanupReadSeeker{
+		file:    f,
+		reader:  f,
+		seeker:  f,
+		cleanup: cleanupFn,
+	}
+	defer seeker.triggerCleanup()
+
+	http.ServeContent(w, r, filename, stat.ModTime().UTC(), seeker)
+}
+
+type cleanupReadSeeker struct {
+	file    *os.File
+	reader  io.Reader
+	seeker  io.Seeker
+	cleanup func()
+	once    sync.Once
+}
+
+func (r *cleanupReadSeeker) Read(p []byte) (int, error) {
+	n, err := r.reader.Read(p)
+	if err != nil {
+		r.triggerCleanup()
+	}
+	return n, err
+}
+
+func (r *cleanupReadSeeker) Seek(offset int64, whence int) (int64, error) {
+	return r.seeker.Seek(offset, whence)
+}
+
+func (r *cleanupReadSeeker) triggerCleanup() {
+	r.once.Do(r.cleanup)
 }

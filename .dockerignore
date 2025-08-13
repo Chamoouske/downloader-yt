@@ -1,0 +1,14 @@
+# Videos
+/videos
+*.mp4
+
+# Logs
+/logs
+*.log
+
+# Dev configurations
+.config
+
+# Git and github
+.git
+.github

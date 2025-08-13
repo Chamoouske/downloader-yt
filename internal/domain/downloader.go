@@ -4,6 +4,6 @@ import "os"
 
 type Downloader interface {
 	Download(video Video, progress ProgressBar) error
-	Finalize(file os.File) error
+	Finalize(notification Notification) error
 	Cancel(file os.File) error
 }

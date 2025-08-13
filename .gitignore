@@ -35,3 +35,11 @@ output
 # Logs
 logs
 *.log
+
+# Enviroments
+.env
+.env*
+!.env.example
+
+# Dev Config
+.config
