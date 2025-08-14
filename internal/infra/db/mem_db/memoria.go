@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+var ErrNotFound = errors.New("not found")
+
 type MemoriaDatabase[T any] struct {
 	data map[string]T
 	mu   sync.RWMutex
@@ -25,7 +27,7 @@ func (r *MemoriaDatabase[T]) Get(id string) (T, error) {
 	v, ok := r.data[id]
 	var zero T
 	if !ok {
-		return zero, errors.New("not found")
+		return zero, ErrNotFound
 	}
 
 	return v, nil
@@ -35,7 +37,7 @@ func (r *MemoriaDatabase[T]) Remove(id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, ok := r.data[id]; !ok {
-		return errors.New("not found")
+		return ErrNotFound
 	}
 	delete(r.data, id)
 	return nil

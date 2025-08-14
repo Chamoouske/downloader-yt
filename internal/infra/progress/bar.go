@@ -17,7 +17,8 @@ type DefaultProgressBarClient struct {
 }
 
 func (d *DefaultProgressBarClient) NewOptions64(total int64, options ...progressbar.Option) *progressbar.ProgressBar {
-	return progressbar.NewOptions64(total, options...)
+	d.bar = progressbar.NewOptions64(total, options...)
+	return d.bar
 }
 
 func (d *DefaultProgressBarClient) Set64(value int64) {

@@ -10,18 +10,20 @@ import (
 
 func TestNewConfig(t *testing.T) {
 	t.Run("should load default config when no file or env vars are provided", func(t *testing.T) {
+		configDir := t.TempDir()
+		os.Setenv("CONFIG_DIR", configDir)
+		defer os.Unsetenv("CONFIG_DIR")
 		os.Unsetenv("PORT")
 		os.Unsetenv("LOG_DIR")
 		os.Unsetenv("VIDEO_DIR")
 		os.Unsetenv("WEBHOOK")
-		os.Unsetenv("CONFIG_DIR")
 
 		cfg, err := NewConfig()
 
 		assert.NoError(t, err)
 		assert.Equal(t, "8080", cfg.GetPort())
-		assert.Equal(t, "./.logs", cfg.GetLogDir())
-		assert.Equal(t, "./videos", cfg.GetVideoDir())
+		assert.Equal(t, filepath.Clean(filepath.Join(configDir, "../.logs")), cfg.GetLogDir())
+		assert.Equal(t, filepath.Clean(filepath.Join(configDir, "../videos")), cfg.GetVideoDir())
 		assert.Equal(t, "http://host.docker.internal:5677/webhook/downloader-yt", cfg.GetURLWebhook())
 	})
 

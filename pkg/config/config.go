@@ -68,10 +68,18 @@ func (c *Config) setDefaults() {
 		c.Port = utils.GetEnvOrDefault("PORT", "8080")
 	}
 	if c.LogDir == "" {
-		c.LogDir = utils.GetEnvOrDefault("LOG_DIR", "./.logs")
+		if c.ConfigDir != "./.config" && c.ConfigDir != "" { // Check if ConfigDir is not default or empty
+			c.LogDir = utils.GetEnvOrDefault("LOG_DIR", filepath.Join(c.ConfigDir, "..", ".logs"))
+		} else {
+			c.LogDir = utils.GetEnvOrDefault("LOG_DIR", "./.logs")
+		}
 	}
 	if c.VideoDir == "" {
-		c.VideoDir = utils.GetEnvOrDefault("VIDEO_DIR", "./videos")
+		if c.ConfigDir != "./.config" && c.ConfigDir != "" { // Check if ConfigDir is not default or empty
+			c.VideoDir = utils.GetEnvOrDefault("VIDEO_DIR", filepath.Join(c.ConfigDir, "..", "videos"))
+		} else {
+			c.VideoDir = utils.GetEnvOrDefault("VIDEO_DIR", "./videos")
+		}
 	}
 	if c.URLWebhook == "" {
 		c.URLWebhook = utils.GetEnvOrDefault("WEBHOOK", "http://host.docker.internal:5677/webhook/downloader-yt")

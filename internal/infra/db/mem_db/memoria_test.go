@@ -50,7 +50,7 @@ func TestMemoriaDatabase_Get(t *testing.T) {
 	// Not found case
 	val, err = db.Get("nonExistentKey")
 	assert.Error(t, err)
-	assert.True(t, errors.Is(err, errors.New("not found")))
+	assert.True(t, errors.Is(err, ErrNotFound))
 	assert.Empty(t, val) // Zero value for string
 
 	// Test with custom struct
@@ -83,7 +83,7 @@ func TestMemoriaDatabase_Remove(t *testing.T) {
 	// Try to remove non-existent key
 	err = db.Remove("nonExistentKey")
 	assert.Error(t, err)
-	assert.True(t, errors.Is(err, errors.New("not found")))
+	assert.True(t, errors.Is(err, ErrNotFound))
 	assert.Equal(t, 1, len(db.data)) // Should not change size
 
 	// Remove last key
