@@ -46,3 +46,6 @@ logs
 
 # Artifacts
 bin
+
+# AI helper
+.crush
